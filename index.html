@@ -249,21 +249,20 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
     Export to Excel
   </button>
-  <p class="footnote">Entries are saved on this device automatically.<br>Export any time to get an .xlsx copy.</p>
+  <p class="footnote">Entries are saved on this device automatically.<br>Export any time to get an .xlsx copy.<br><a href="#" id="renameDeviceLink" style="color:var(--ink-soft)">Rename this device</a></p>
 </div>
 
 <script>
 let entries = [];
 const STORAGE_KEY = 'output-log-entries';
 const GS_URL_KEY = 'output-log-gs-url';
-let gsUrl = '';
+let gsUrl = 'https://script.google.com/macros/s/AKfycbwt6A1mXrrEBW-tTxGaZp9WWTc2tmL3lIj-aJNc-Wpa38HF3N4-5MJzpKr8rZXzhhGi/exec';
 
 async function loadGsUrl(){
   try{
-    gsUrl = localStorage.getItem(GS_URL_KEY) || '';
-  }catch(e){
-    gsUrl = '';
-  }
+    const stored = localStorage.getItem(GS_URL_KEY);
+    if(stored) gsUrl = stored;
+  }catch(e){}
   updateSyncUI();
 }
 function updateSyncUI(connectedOverride, failedOverride){
@@ -305,7 +304,8 @@ async function syncToSheet(entry){
     time: d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}),
     self: entry.self,
     cath: entry.cath,
-    pooped: entry.pooped ? 'Yes' : 'No'
+    pooped: entry.pooped ? 'Yes' : 'No',
+    device: entry.deviceName || ''
   };
   try{
     const res = await fetch(gsUrl, {
@@ -386,6 +386,27 @@ function formatTime(dateStr){
   return d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'});
 }
 
+function roundTo5(n){
+  return Math.round(n / 5) * 5;
+}
+
+const DEVICE_KEY = 'output-log-device-name';
+let deviceName = '';
+function getDeviceName(){
+  try{ deviceName = localStorage.getItem(DEVICE_KEY) || ''; }catch(e){}
+  if(!deviceName){
+    deviceName = (prompt('Name this device (e.g. "Kim\'s iPhone") so entries can be told apart later:') || '').trim() || 'Unknown device';
+    try{ localStorage.setItem(DEVICE_KEY, deviceName); }catch(e){}
+  }
+}
+function renameDevice(){
+  const next = (prompt('Rename this device:', deviceName) || '').trim();
+  if(next){
+    deviceName = next;
+    try{ localStorage.setItem(DEVICE_KEY, deviceName); }catch(e){}
+  }
+}
+
 function render(){
   const list = document.getElementById('list');
   document.getElementById('countLabel').textContent = entries.length ? `${entries.length} entries` : '';
@@ -427,15 +448,16 @@ function render(){
 
 document.getElementById('saveBtn').onclick = async ()=>{
   const dt = document.getElementById('dt').value;
-  const self = parseFloat(document.getElementById('self').value) || 0;
-  const cath = parseFloat(document.getElementById('cath').value) || 0;
+  const self = roundTo5(parseFloat(document.getElementById('self').value) || 0);
+  const cath = roundTo5(parseFloat(document.getElementById('cath').value) || 0);
   if(!dt){ return; }
 
   entries.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
     dateTime: dt,
     self, cath,
-    pooped
+    pooped,
+    deviceName
   });
   await persist();
   render();
@@ -472,19 +494,24 @@ document.getElementById('exportBtn').onclick = ()=>{
       'Time': d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}),
       'Self (mL)': e.self,
       'Cath (mL)': e.cath,
-      'Pooped': e.pooped ? 'Yes' : 'No'
+      'Pooped': e.pooped ? 'Yes' : 'No',
+      'Device': e.deviceName || ''
     };
   });
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:8}];
+  ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:8},{wch:16}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Log');
   const fname = `output-log-${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, fname);
 };
 
+getDeviceName();
 loadEntries();
 loadGsUrl();
+document.getElementById('renameDeviceLink').onclick = (e)=>{ e.preventDefault(); renameDevice(); };
 </script>
 </body>
+</html>
+
 </html>
