@@ -392,11 +392,23 @@ function roundTo5(n){
 
 const DEVICE_KEY = 'output-log-device-name';
 let deviceName = '';
+function detectDeviceLabel(){
+  const ua = navigator.userAgent;
+  if(/iPad/.test(ua)) return 'iPad';
+  if(/iPhone/.test(ua)) return 'iPhone';
+  if(/Android/.test(ua)) return 'Android';
+  if(/Macintosh/.test(ua)) return 'Mac';
+  if(/Windows/.test(ua)) return 'Windows';
+  return 'Device';
+}
 function getDeviceName(){
   try{ deviceName = localStorage.getItem(DEVICE_KEY) || ''; }catch(e){}
-  if(!deviceName){
-    deviceName = (prompt('Name this device (e.g. "Kim\'s iPhone") so entries can be told apart later:') || '').trim() || 'Unknown device';
-    try{ localStorage.setItem(DEVICE_KEY, deviceName); }catch(e){}
+  while(!deviceName){
+    const val = (prompt('Name this device (e.g. "Kim\'s iPhone") — required so entries can be told apart:') || '').trim();
+    if(val){
+      deviceName = val;
+      try{ localStorage.setItem(DEVICE_KEY, deviceName); }catch(e){}
+    }
   }
 }
 function renameDevice(){
@@ -512,6 +524,4 @@ loadGsUrl();
 document.getElementById('renameDeviceLink').onclick = (e)=>{ e.preventDefault(); renameDevice(); };
 </script>
 </body>
-</html>
-
 </html>
