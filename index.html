@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Output Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#F3F7F6;
+    --surface:#FFFFFF;
+    --ink:#17302D;
+    --ink-soft:#5C7472;
+    --primary:#2A7D79;
+    --primary-dark:#1D5C58;
+    --primary-tint:#E4F0EE;
+    --amber:#BE8A3D;
+    --amber-tint:#FBF1DF;
+    --danger:#AE4450;
+    --line:#DEE9E7;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+    min-height:100vh;
+    padding-bottom:calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
+
+  header{
+    position:sticky; top:0; z-index:10;
+    background:linear-gradient(180deg, var(--bg) 80%, transparent);
+    padding:calc(18px + env(safe-area-inset-top)) 16px 10px;
+  }
+  .headrow{max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;}
+  .mark{width:34px;height:34px;flex:none;}
+  h1{
+    font-size:20px; font-weight:750; letter-spacing:-0.01em; margin:0;
+    flex:1;
+  }
+  .today{font-size:13px;color:var(--ink-soft);margin:2px 0 0;}
+
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 1px 2px rgba(23,48,45,0.04), 0 8px 24px rgba(23,48,45,0.05);
+    margin-bottom:16px;
+  }
+
+  label{
+    display:block; font-size:12.5px; font-weight:650; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
+  }
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+
+  input[type="datetime-local"], input[type="number"]{
+    width:100%; border:1.5px solid var(--line); background:#FBFDFD;
+    border-radius:12px; padding:12px 13px; font-size:16px; color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    -webkit-appearance:none; appearance:none;
+  }
+  input:focus{outline:none; border-color:var(--primary);}
+
+  .mlrow{display:flex; gap:12px;}
+  .mlrow .field{flex:1;}
+
+  .stepper{display:flex; align-items:stretch; gap:8px;}
+  .stepper input{text-align:center; font-weight:700;}
+  .stepper button{
+    width:44px; border:1.5px solid var(--line); background:#FBFDFD; border-radius:12px;
+    font-size:20px; color:var(--primary-dark); font-weight:600;
+  }
+  .stepper button:active{background:var(--primary-tint);}
+
+  .poop-toggle{
+    display:flex; align-items:center; justify-content:space-between;
+    background:#FBFDFD; border:1.5px solid var(--line); border-radius:12px;
+    padding:12px 14px; cursor:pointer; user-select:none;
+  }
+  .poop-toggle.active{background:var(--amber-tint); border-color:var(--amber);}
+  .poop-toggle .lbl{font-size:15.5px; font-weight:600;}
+  .poop-toggle .hint{font-size:12px; color:var(--ink-soft); margin-top:1px;}
+  .switch{
+    width:46px;height:28px;border-radius:16px;background:#DDE6E4;position:relative;flex:none;
+    transition:background .18s ease;
+  }
+  .switch::after{
+    content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .18s ease;
+  }
+  .poop-toggle.active .switch{background:var(--amber);}
+  .poop-toggle.active .switch::after{transform:translateX(18px);}
+
+  .save-btn{
+    width:100%; margin-top:18px; padding:15px; border:none; border-radius:14px;
+    background:var(--primary); color:#fff; font-size:16.5px; font-weight:700;
+    letter-spacing:.01em;
+  }
+  .save-btn:active{background:var(--primary-dark);}
+  .save-btn.saved{background:var(--primary-dark);}
+
+  .section-title{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin:22px 2px 10px;
+  }
+  .section-title h2{font-size:15px; margin:0; font-weight:750;}
+  .section-title span{font-size:12.5px; color:var(--ink-soft);}
+
+  .daygroup{margin-bottom:14px;}
+  .daylabel{font-size:12.5px; font-weight:700; color:var(--primary-dark); margin:0 0 8px 4px; text-transform:uppercase; letter-spacing:.04em;}
+
+  .entry{
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface); border-radius:14px; padding:12px 14px; margin-bottom:8px;
+    box-shadow:0 1px 2px rgba(23,48,45,0.04);
+  }
+  .entry .time{width:52px; flex:none; font-size:13px; font-weight:700; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
+  .entry .vals{flex:1; display:flex; gap:14px; font-variant-numeric:tabular-nums;}
+  .entry .val b{font-size:15px;}
+  .entry .val small{display:block; font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;}
+  .entry .poop-chip{
+    font-size:11px; font-weight:700; color:var(--amber); background:var(--amber-tint);
+    padding:3px 8px; border-radius:20px; flex:none;
+  }
+  .entry .del{
+    flex:none; width:26px; height:26px; border-radius:50%; border:none;
+    background:#F3EBEC; color:var(--danger); font-size:14px; font-weight:700; line-height:1;
+  }
+
+  .empty{
+    text-align:center; color:var(--ink-soft); font-size:14px; padding:30px 10px;
+  }
+
+  .export-btn{
+    width:100%; padding:14px; border-radius:14px; border:1.5px solid var(--primary);
+    background:var(--primary-tint); color:var(--primary-dark); font-size:15px; font-weight:700;
+    margin-top:20px; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .export-btn:active{background:#D2E7E4;}
+  .export-btn svg{width:17px;height:17px;}
+
+  .footnote{text-align:center; font-size:11.5px; color:var(--ink-soft); margin-top:10px; line-height:1.5;}
+
+  .sync-card{
+    background:var(--surface); border-radius:14px; padding:12px 14px; margin-bottom:16px;
+    box-shadow:0 1px 2px rgba(23,48,45,0.04);
+  }
+  .sync-row{display:flex; align-items:center; gap:10px;}
+  .sync-dot{width:9px;height:9px;border-radius:50%;background:#C7D3D1; flex:none;}
+  .sync-dot.on{background:var(--primary);}
+  .sync-text{flex:1; font-size:13.5px; font-weight:600;}
+  .sync-sub{font-size:11.5px; color:var(--ink-soft); margin-top:1px;}
+  .sync-edit{font-size:12.5px; font-weight:700; color:var(--primary-dark); background:none; border:none; padding:4px;}
+  .sync-form{display:none; margin-top:10px; gap:8px;}
+  .sync-form.open{display:flex;}
+  .sync-form input{
+    flex:1; border:1.5px solid var(--line); background:#FBFDFD; border-radius:10px;
+    padding:9px 11px; font-size:13.5px;
+  }
+  .sync-form button{
+    border:none; background:var(--primary); color:#fff; border-radius:10px; padding:0 14px; font-size:13.5px; font-weight:700;
+  }
+  .sync-badge{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; margin-left:6px;}
+  .sync-badge.ok{background:var(--primary-tint); color:var(--primary-dark);}
+  .sync-badge.fail{background:#F3EBEC; color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="headrow">
+      <svg class="mark" viewBox="0 0 34 34" fill="none">
+        <circle cx="17" cy="17" r="17" fill="#2A7D79"/>
+        <path d="M17 8c3.5 4.4 6.2 8 6.2 11.2A6.2 6.2 0 1 1 10.8 19.2C10.8 16 13.5 12.4 17 8z" fill="#EAF6F4"/>
+      </svg>
+      <div>
+        <h1>Output Log</h1>
+        <p class="today" id="todayLabel"></p>
+      </div>
+    </div>
+  </header>
+
+  <div class="sync-card">
+    <div class="sync-row">
+      <div class="sync-dot" id="syncDot"></div>
+      <div style="flex:1">
+        <div class="sync-text" id="syncText">Not connected to Google Sheets</div>
+        <div class="sync-sub" id="syncSub">Entries save on this phone only</div>
+      </div>
+      <button class="sync-edit" id="syncEditBtn">Connect</button>
+    </div>
+    <div class="sync-form" id="syncForm">
+      <input type="url" id="syncUrlInput" placeholder="Paste Web App URL (…/exec)">
+      <button id="syncSaveBtn">Save</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="dt">Date &amp; time</label>
+      <input type="datetime-local" id="dt">
+    </div>
+
+    <div class="mlrow">
+      <div class="field">
+        <label for="self">Self (mL)</label>
+        <div class="stepper">
+          <button type="button" id="selfMinus">–</button>
+          <input type="number" id="self" inputmode="numeric" min="0" step="5" placeholder="0">
+          <button type="button" id="selfPlus">+</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="cath">Cath (mL)</label>
+        <div class="stepper">
+          <button type="button" id="cathMinus">–</button>
+          <input type="number" id="cath" inputmode="numeric" min="0" step="5" placeholder="0">
+          <button type="button" id="cathPlus">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="poop-toggle" id="poopToggle">
+        <div>
+          <div class="lbl">Also pooped</div>
+          <div class="hint">Sets Self to 10 mL automatically</div>
+        </div>
+        <div class="switch"></div>
+      </div>
+    </div>
+
+    <button class="save-btn" id="saveBtn">Log entry</button>
+  </div>
+
+  <div class="section-title">
+    <h2>History</h2>
+    <span id="countLabel"></span>
+  </div>
+  <div id="list"></div>
+
+  <button class="export-btn" id="exportBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    Export to Excel
+  </button>
+  <p class="footnote">Entries are saved on this device automatically.<br>Export any time to get an .xlsx copy.</p>
+</div>
+
+<script>
+let entries = [];
+const STORAGE_KEY = 'output-log-entries';
+const GS_URL_KEY = 'output-log-gs-url';
+let gsUrl = '';
+
+async function loadGsUrl(){
+  try{
+    gsUrl = localStorage.getItem(GS_URL_KEY) || '';
+  }catch(e){
+    gsUrl = '';
+  }
+  updateSyncUI();
+}
+function updateSyncUI(connectedOverride, failedOverride){
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  const sub = document.getElementById('syncSub');
+  const editBtn = document.getElementById('syncEditBtn');
+  if(gsUrl){
+    dot.classList.add('on');
+    text.textContent = 'Connected to Google Sheets';
+    sub.textContent = failedOverride ? 'Last sync failed — will retry next entry' : 'Every entry also saves to your sheet';
+    editBtn.textContent = 'Change';
+  } else {
+    dot.classList.remove('on');
+    text.textContent = 'Not connected to Google Sheets';
+    sub.textContent = 'Entries save on this phone only';
+    editBtn.textContent = 'Connect';
+  }
+}
+document.getElementById('syncEditBtn').onclick = ()=>{
+  const form = document.getElementById('syncForm');
+  form.classList.toggle('open');
+  document.getElementById('syncUrlInput').value = gsUrl;
+};
+document.getElementById('syncSaveBtn').onclick = async ()=>{
+  const val = document.getElementById('syncUrlInput').value.trim();
+  gsUrl = val;
+  try{
+    localStorage.setItem(GS_URL_KEY, gsUrl);
+  }catch(e){}
+  document.getElementById('syncForm').classList.remove('open');
+  updateSyncUI();
+};
+async function syncToSheet(entry){
+  if(!gsUrl) return true;
+  const d = new Date(entry.dateTime);
+  const payload = {
+    date: d.toLocaleDateString(),
+    time: d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}),
+    self: entry.self,
+    cath: entry.cath,
+    pooped: entry.pooped ? 'Yes' : 'No'
+  };
+  try{
+    const res = await fetch(gsUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  }catch(e){
+    return false;
+  }
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function nowLocal(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function setDefaultDateTime(){
+  document.getElementById('dt').value = nowLocal();
+}
+
+document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+setDefaultDateTime();
+
+// steppers
+function step(id, delta){
+  const el = document.getElementById(id);
+  const v = Math.max(0, (parseInt(el.value,10)||0) + delta);
+  el.value = v;
+}
+document.getElementById('selfMinus').onclick = ()=>step('self',-5);
+document.getElementById('selfPlus').onclick = ()=>step('self',5);
+document.getElementById('cathMinus').onclick = ()=>step('cath',-5);
+document.getElementById('cathPlus').onclick = ()=>step('cath',5);
+
+// poop toggle
+const poopToggle = document.getElementById('poopToggle');
+let pooped = false;
+poopToggle.onclick = () => {
+  pooped = !pooped;
+  poopToggle.classList.toggle('active', pooped);
+  const selfInput = document.getElementById('self');
+  if(pooped){
+    selfInput.value = 10;
+  }
+};
+
+// storage helpers
+async function loadEntries(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    entries = [];
+  }
+  render();
+}
+async function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }catch(e){
+    console.error('Save failed', e);
+  }
+}
+
+function formatDay(dateStr){
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yest = new Date(); yest.setDate(today.getDate()-1);
+  const sameDay = (a,b)=> a.toDateString()===b.toDateString();
+  if(sameDay(d,today)) return 'Today';
+  if(sameDay(d,yest)) return 'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+}
+function formatTime(dateStr){
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'});
+}
+
+function render(){
+  const list = document.getElementById('list');
+  document.getElementById('countLabel').textContent = entries.length ? `${entries.length} entries` : '';
+  if(entries.length === 0){
+    list.innerHTML = '<div class="empty">No entries yet — logged entries will appear here.</div>';
+    return;
+  }
+  const sorted = [...entries].sort((a,b)=> new Date(b.dateTime) - new Date(a.dateTime));
+  const groups = {};
+  sorted.forEach(e=>{
+    const key = formatDay(e.dateTime);
+    (groups[key] = groups[key] || []).push(e);
+  });
+  list.innerHTML = Object.entries(groups).map(([day, items])=>`
+    <div class="daygroup">
+      <div class="daylabel">${day}</div>
+      ${items.map(e=>`
+        <div class="entry">
+          <div class="time">${formatTime(e.dateTime)}</div>
+          <div class="vals">
+            <div class="val"><b>${e.self}</b><small>Self mL</small></div>
+            <div class="val"><b>${e.cath}</b><small>Cath mL</small></div>
+          </div>
+          ${e.pooped ? '<div class="poop-chip">Pooped</div>' : ''}
+          <button class="del" data-id="${e.id}">✕</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      entries = entries.filter(e=> e.id !== btn.dataset.id);
+      await persist();
+      render();
+    };
+  });
+}
+
+document.getElementById('saveBtn').onclick = async ()=>{
+  const dt = document.getElementById('dt').value;
+  const self = parseFloat(document.getElementById('self').value) || 0;
+  const cath = parseFloat(document.getElementById('cath').value) || 0;
+  if(!dt){ return; }
+
+  entries.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    dateTime: dt,
+    self, cath,
+    pooped
+  });
+  await persist();
+  render();
+
+  const btn = document.getElementById('saveBtn');
+  const newEntry = entries[entries.length - 1];
+  btn.classList.add('saved');
+  btn.textContent = gsUrl ? 'Syncing…' : 'Logged ✓';
+
+  // reset form right away so the next entry can be logged without waiting
+  setDefaultDateTime();
+  document.getElementById('self').value = '';
+  document.getElementById('cath').value = '';
+  pooped = false;
+  poopToggle.classList.remove('active');
+
+  if(gsUrl){
+    const ok = await syncToSheet(newEntry);
+    btn.textContent = ok ? 'Logged ✓ (synced)' : 'Logged ✓ (sync failed)';
+    updateSyncUI(true, !ok);
+  } else {
+    btn.textContent = 'Logged ✓';
+  }
+  setTimeout(()=>{ btn.classList.remove('saved'); btn.textContent='Log entry'; }, 1200);
+};
+
+document.getElementById('exportBtn').onclick = ()=>{
+  if(entries.length === 0){ alert('No entries to export yet.'); return; }
+  const sorted = [...entries].sort((a,b)=> new Date(a.dateTime) - new Date(b.dateTime));
+  const rows = sorted.map(e=>{
+    const d = new Date(e.dateTime);
+    return {
+      'Date': d.toLocaleDateString(),
+      'Time': d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}),
+      'Self (mL)': e.self,
+      'Cath (mL)': e.cath,
+      'Pooped': e.pooped ? 'Yes' : 'No'
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Log');
+  const fname = `output-log-${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fname);
+};
+
+loadEntries();
+loadGsUrl();
+</script>
+</body>
+</html>
